@@ -70,11 +70,11 @@ if(client) {
   char* route = "";
   char* requestMethod = "";
   char information [15];
-  int information_letter_count = 0;
+  byte information_letter_count = 0;
 
-  int wordCount = 0;
-  int letterCount = 0;
-  int lineCount = 0;
+  byte wordCount = 0;
+  byte letterCount = 0;
+  byte lineCount = 0;
   
   while(client.available()) {             
     
@@ -87,13 +87,13 @@ if(client) {
 
         if (wordCount == 0){
                 requestMethod = new char [information_letter_count+1]; 
-                for (int i=0; i<information_letter_count; i++)
+                for (byte i=0; i<information_letter_count; i++)
                   requestMethod[i] = information [i];
                 requestMethod [information_letter_count] = '\0'; 
         }
         else if (wordCount == 1){
                 route = new char [information_letter_count+1]; 
-                for (int i=0; i<information_letter_count; i++)
+                for (byte i=0; i<information_letter_count; i++)
                   route[i] = information [i];
                 route [information_letter_count] = '\0';
                 break;
