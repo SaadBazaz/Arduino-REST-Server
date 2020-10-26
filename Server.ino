@@ -3,18 +3,66 @@
 #include <SD.h>
 
 #define MAXLENGTH_FIRSTLINE 30
+#define MAXLENGTH 150
+#define MAXLINES 18
 
-void handleResponse(EthernetClient& client, char* status_code, char* message){
+void handleResponse(EthernetClient& client, char* status_code, char* message = ""){
     if(client.connected()) {
-      client.print("HTTP/1.1 ");
+      client.print(F("HTTP/1.1 "));
       client.print(status_code);
-      client.println("\nContent-Type: text/html\n");
+      client.println(F("\nContent-Type: text/html\n"));
       client.println(message);
     }
     client.stop();
     Serial.print("\nClient disconnected with ");
     Serial.print(status_code);
 }
+
+
+bool getData (EthernetClient& client, char* information, byte& information_letter_count){
+      information_letter_count = 0;
+
+      byte wordCount = 0;
+      byte letterCount = 0;
+      byte lineCount = 0;
+
+      bool dataAhead = false;
+      
+      while(client.available()) {             
+        
+          char c = client.read();
+//          Serial.print(c);
+    
+          // Extract Request Data 
+          if (dataAhead == true){
+            if (information_letter_count < 30)
+              information[information_letter_count++] = c;
+            else{
+              handleResponse (client, "413 Payload Too Large");
+              return false;              
+            }
+          }
+    
+          // Check Endlines
+          if (c == '\n'){
+            lineCount ++;
+            if (letterCount == 2){  //In HTTP, data is ahead of the line containing only a newline
+              dataAhead = true;              
+            }
+            letterCount = 0;
+          }     
+    
+          letterCount ++;          
+    
+          if (letterCount >= MAXLENGTH or lineCount >= MAXLINES){
+            handleResponse (client, "413 Payload Too Large");
+            return false;
+          }
+      }
+      information[information_letter_count] = '\0'; 
+      return true; 
+}
+
 
 // Mac Address -> 00:aa:bb:cc:de:06
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x06};
@@ -34,7 +82,7 @@ void setup() {
   // initialize SD card
   Serial.println("Init SD card...");
   if (!SD.begin(4)) {
-      Serial.println("ERROR - SD init");
+      //Serial.println("ERROR - SD init");
       return;    // init failed
   }
   Serial.println("SUCCESS - SD init");
@@ -52,13 +100,21 @@ void setup() {
   server.begin();
   Serial.println("Server Started");
 
-  // Making a trigger pin
-  pinMode(13, OUTPUT);    // sets the digital pin 8 as output
-  digitalWrite(13, LOW);  // sets the digital pin 8 off
-  Serial.println("Set pin 13 as output");
+  // Making all from 1-13 trigger pins
+//  for (int i=1; i<9; i++){
+    pinMode(7, OUTPUT);    // sets the digital pin as output
+    digitalWrite(7, LOW);  // sets the digital pin off
+//  }
+  Serial.println("Set pin 7 as output");
 
   
 }
+
+byte information_letter_count = 0;
+
+byte wordCount = 0;
+byte letterCount = 0;
+byte lineCount = 0;
 
 void loop() {
   
@@ -69,17 +125,19 @@ if(client) {
 
   char* route = "";
   char* requestMethod = "";
-  char information [15];
-  byte information_letter_count = 0;
+  char information [30];
 
-  byte wordCount = 0;
-  byte letterCount = 0;
-  byte lineCount = 0;
+  information_letter_count = 0;
+
+  wordCount = 0;
+  letterCount = 0;
+  lineCount = 0;
   
+
   while(client.available()) {             
     
       char c = client.read();
-
+      Serial.print(c);
 
       // Data in the first line is important to determine which route we'll take, and how
       if (c == ' '){
@@ -114,7 +172,7 @@ if(client) {
       letterCount ++;
 
       if (letterCount >= MAXLENGTH_FIRSTLINE){
-        handleResponse (client, "400 Bad Request", "The request's first line was too large.");
+        handleResponse (client, "413 Payload Too Large");
         if (route)
           delete route;
         if (requestMethod)
@@ -141,42 +199,42 @@ if(client) {
 
 
   // @route: HIGH
-  // Turns the pin 13 high
+  // Turns the pin 7 high
   // Returns a statement (text/html)
   if (strncmp("H/", route, 2) == 0){
-      Serial.println("\nActivating pin 13...");
-    // trigger the pin 13
-      digitalWrite(13, HIGH);                   // sets the digital pin 13 on
+      Serial.println("\nActivating pin 7...");
+    // trigger the pin 7
+      digitalWrite(7, HIGH);                   // sets the digital pin 7 on
 
     if(client.connected()){
-      handleResponse(client, "200 OK", "Pin 13 activated");      
+      handleResponse(client, "200 OK");      
     }
   }
 
   // @route: PULSE
-  // Pulses the pin 13 for 500ms
+  // Pulses the pin 7 for 500ms
   // Returns a statement (text/html)
   else if (strncmp("P/", route, 2) == 0){
-    Serial.println("\nPulsing pin 13...");
-  // trigger the pin 13
-    digitalWrite(13, HIGH);                   // sets the digital pin 13 on
-    delay(500);                               // waits for a second
-    digitalWrite(13, LOW);                    // sets the digital pin 13 off
+    Serial.println("\nPulsing pin 7...");
+  // trigger the pin 7
+    digitalWrite(7, HIGH);                   // sets the digital pin 7 on
+    delay(1000);                               // waits for a second
+    digitalWrite(7, LOW);                    // sets the digital pin 7 off
 
     if(client.connected()){
-      handleResponse(client, "200 OK", "Pin 13 pulsed");      
+      handleResponse(client, "200 OK");      
     }
   }
 
   // @route: LOW
-  // Turns the pin 13 low
+  // Turns the pin 7 low
   // Returns a statement (text/html)
   else if (strncmp("L/", route, 2) == 0){
-    Serial.println("\nDeactivating pin 13...");
-    digitalWrite(13, LOW);                    // sets the digital pin 133 off
+    //Serial.println("\nDeactivating pin 13...");
+    digitalWrite(7, LOW);                    // sets the digital pin 7 off
 
     if(client.connected()){
-      handleResponse(client, "200 OK", "Pin 13 turned off");      
+      handleResponse(client, "200 OK");      
     }
   }
 
@@ -184,8 +242,26 @@ if(client) {
   // Serves a login page from the SD card
   // Returns a login page (text/html)
   else if (strncmp("login", route, 5) == 0){
+
+    if(strcmp(requestMethod, "POST") == 0){
+   
+
+      if ( getData(client, information, information_letter_count) ){
+
+        Serial.print("\nInfo is: ");
+        Serial.print(information);
+
+        // For now, return the information which the client entered
+        handleResponse(client, "200 OK", information);       
+      }
+      else{
+        return;
+      }
+       
+    }
+    
     if(client.connected()) {
-        Serial.println("\nResponse Sent to Client: A HTML Page");
+        //Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
         // send web page
@@ -197,7 +273,7 @@ if(client) {
             webFile.close();
         } 
         client.stop();
-        Serial.println("Client is disconnected");
+        //Serial.println("Client is disconnected");
     }    
   }
 
@@ -205,7 +281,7 @@ if(client) {
   // If route doesn't exist above, land here
   // Returns a statement (text/html)
   else {
-    handleResponse(client, "404 Not Found", "This route does not exist.");
+    handleResponse(client, "404 Not Found");
   }
 
   // free memory
