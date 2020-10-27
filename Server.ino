@@ -3,10 +3,18 @@
 #include <SD.h>       //Standard Library for SD card I/O
 #include <avr/wdt.h>  //Library for watchdog timer
 
-#define MAXLENGTH_FIRSTLINE 30
-#define MAXLENGTH 150
-#define MAXLINES 18
+#define MAXLENGTH_FIRSTLINE 30          //Max line length for the first line of the request
+#define MAXLENGTH 150                   //Max line length for other lines of the request
+#define MAXLINES 18                     //Max possible lines for the whole request (only used if you try to retrieve data)
 
+
+
+/*
+Function to handle generic responses
+1- Adds the appropriate header
+2- Adds the status code you've passed
+3- Adds the message (optional)
+*/
 void handleResponse(EthernetClient& client, char* status_code, char* message = ""){
     if(client.connected()) {
       client.print(F("HTTP/1.1 "));
@@ -20,6 +28,9 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
 }
 
 
+/*
+Function to extract data from the HTTP request
+*/
 bool getData (EthernetClient& client, char* information, byte& information_letter_count){
       information_letter_count = 0;
 
@@ -118,15 +129,26 @@ void setup() {
   
 }
 
+
+
+/* 
+Global data as that seemed like the most efficient option to pass around data,
+as these variables are used in every single request
+*/
 byte information_letter_count = 0;
 
 byte wordCount = 0;
 byte letterCount = 0;
 byte lineCount = 0;
 
+
+
+/* 
+Main looping function
+*/
 void loop() {
 
-  // the program is alive...for now. 
+  // The program is alive...for now. 
   wdt_reset();
   
   Serial.println(".");
@@ -209,49 +231,62 @@ if(client) {
   // the parent route. Subroutes can be checked by adding another if/else inside.
 
 
-  // @route: HIGH
-  // Turns the pin 7 high
-  // Returns a statement (text/html)
+    
+  /*
+  @route: HIGH
+  Turns the pin 1 high
+  Returns a statement (text/html)
+  */
   if (strncmp("H/", route, 2) == 0){
-      Serial.println("\nActivating pin 7...");
-    // trigger the pin 7
-      digitalWrite(1, HIGH);                   // sets the digital pin 7 on
+
+    Serial.println("\nActivating pin 7...");
+    digitalWrite(1, HIGH);                   // sets the digital pin 1 on
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
     }
   }
 
-  // @route: PULSE
-  // Pulses the pin 7 for 500ms
-  // Returns a statement (text/html)
+    
+  /*
+  @route: PULSE
+  Pulses the pin 1 for 500ms
+  Returns a statement (text/html)
+  */
   else if (strncmp("P/", route, 2) == 0){
-    Serial.println("\nPulsing pin 7...");
-  // trigger the pin 7
-    digitalWrite(1, HIGH);                   // sets the digital pin 7 on
+    
+    Serial.println("\nPulsing pin 1...");
+    digitalWrite(1, HIGH);                   // sets the digital pin 1 on
     delay(1000);                               // waits for a second
-    digitalWrite(1, LOW);                    // sets the digital pin 7 off
+    digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
     }
   }
 
-  // @route: LOW
-  // Turns the pin 7 low
-  // Returns a statement (text/html)
+    
+  /*
+  @route: LOW
+  Turns the pin 1 low
+  Returns a statement (text/html)
+  */
   else if (strncmp("L/", route, 2) == 0){
-    //Serial.println("\nDeactivating pin 13...");
-    digitalWrite(1, LOW);                    // sets the digital pin 7 off
+
+    Serial.println("\nDeactivating pin 13...");
+    digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
     }
   }
 
-  // @route: LOGIN
-  // Serves a login page from the SD card
-  // Returns a login page (text/html)
+   
+  /* 
+  @route: LOGIN
+  GET: Serves a login page from the SD card
+  POST: Receives and validates login data
+  */
   else if (strncmp("login", route, 5) == 0){
 
     if(strcmp(requestMethod, "POST") == 0){
@@ -272,7 +307,7 @@ if(client) {
     }
     
     else if(client.connected()) {
-        //Serial.println("\nResponse Sent to Client: A HTML Page");
+        Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
         // send web page
@@ -284,13 +319,26 @@ if(client) {
             webFile.close();
         } 
         client.stop();
-        //Serial.println("Client is disconnected");
+        Serial.println("Client is disconnected");
     }    
+  }    
+    
+  /*
+  @route: DELAY
+  Delay the Arduino for 8 seconds. Used to reboot the Arduino forcefully.
+  Returns OK
+  */
+  else if (strcmp("dl", route)){
+      delay(8000);
+      handleResponse(client, "200 OK");  
   }
-
-  // @route: NOT_FOUND
-  // If route doesn't exist above, land here
-  // Returns a statement (text/html)
+    
+    
+  /*
+  @route: NOT_FOUND
+  If route doesn't exist above, land here
+  Returns a statement (text/html)
+  */
   else {
     handleResponse(client, "404 Not Found");
   }
