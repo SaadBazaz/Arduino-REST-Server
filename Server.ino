@@ -328,7 +328,7 @@ if(client) {
   Delay the Arduino for 8 seconds. Used to reboot the Arduino forcefully.
   Returns OK
   */
-  else if (strcmp("dl", route)){
+  else if (strcmp("dl", route)==0){
       delay(8000);
       handleResponse(client, "200 OK");  
   }
