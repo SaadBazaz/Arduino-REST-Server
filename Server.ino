@@ -271,7 +271,7 @@ if(client) {
        
     }
     
-    if(client.connected()) {
+    else if(client.connected()) {
         //Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
