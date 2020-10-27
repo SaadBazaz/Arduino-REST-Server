@@ -1,6 +1,7 @@
-#include <Ethernet.h>
-#include <SPI.h>
-#include <SD.h>
+#include <Ethernet.h> //Standard Library for Ethernet Server
+#include <SPI.h>      //Standard Library for networking
+#include <SD.h>       //Standard Library for SD card I/O
+#include <avr/wdt.h>  //Library for watchdog timer
 
 #define MAXLENGTH_FIRSTLINE 30
 #define MAXLENGTH 150
@@ -74,6 +75,13 @@ File webFile;
 
 
 void setup() {
+
+  //Enable Watchdog Timer.
+  //This will reset the Arduino if it hangs up for 8 seconds
+  //In the loop, as we also delay the loop for 2 seconds, we have 7 seconds left to work
+  //Which, in hindsight of the Arduino's walnut memory, may be less as well.
+  wdt_enable(WDTO_8S);
+  
   
   Serial.begin(9600);
   boolean receiving = false;
@@ -102,10 +110,10 @@ void setup() {
 
   // Making all from 1-13 trigger pins
 //  for (int i=1; i<9; i++){
-    pinMode(7, OUTPUT);    // sets the digital pin as output
-    digitalWrite(7, LOW);  // sets the digital pin off
+    pinMode(1, OUTPUT);    // sets the digital pin as output
+    digitalWrite(1, LOW);  // sets the digital pin off
 //  }
-  Serial.println("Set pin 7 as output");
+  Serial.println("Set pin 1 as output");
 
   
 }
@@ -117,6 +125,9 @@ byte letterCount = 0;
 byte lineCount = 0;
 
 void loop() {
+
+  // the program is alive...for now. 
+  wdt_reset();
   
   Serial.println(".");
   EthernetClient client = server.available();
@@ -204,7 +215,7 @@ if(client) {
   if (strncmp("H/", route, 2) == 0){
       Serial.println("\nActivating pin 7...");
     // trigger the pin 7
-      digitalWrite(7, HIGH);                   // sets the digital pin 7 on
+      digitalWrite(1, HIGH);                   // sets the digital pin 7 on
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
@@ -217,9 +228,9 @@ if(client) {
   else if (strncmp("P/", route, 2) == 0){
     Serial.println("\nPulsing pin 7...");
   // trigger the pin 7
-    digitalWrite(7, HIGH);                   // sets the digital pin 7 on
+    digitalWrite(1, HIGH);                   // sets the digital pin 7 on
     delay(1000);                               // waits for a second
-    digitalWrite(7, LOW);                    // sets the digital pin 7 off
+    digitalWrite(1, LOW);                    // sets the digital pin 7 off
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
@@ -231,7 +242,7 @@ if(client) {
   // Returns a statement (text/html)
   else if (strncmp("L/", route, 2) == 0){
     //Serial.println("\nDeactivating pin 13...");
-    digitalWrite(7, LOW);                    // sets the digital pin 7 off
+    digitalWrite(1, LOW);                    // sets the digital pin 7 off
 
     if(client.connected()){
       handleResponse(client, "200 OK");      
@@ -290,5 +301,5 @@ if(client) {
 
 }
 
-delay(3000); // Wait for 3 seconds before starting to listen again
+delay(3000); // Wait for 1 second before starting to listen again
 }
