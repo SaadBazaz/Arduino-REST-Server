@@ -301,5 +301,5 @@ if(client) {
 
 }
 
-delay(3000); // Wait for 1 second before starting to listen again
+delay(3000); // Wait for 3 seconds before starting to listen again
 }
