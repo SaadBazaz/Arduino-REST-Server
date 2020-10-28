@@ -24,8 +24,8 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
       client.println(message);
     }
     client.stop();
-    //Serial.print("\nClient disconnected with ");
-    //Serial.print(status_code);
+    Serial.print("\nClient disconnected with ");
+    Serial.print(status_code);
 }
 
 
@@ -46,7 +46,6 @@ bool getData (EthernetClient& client, char* information, byte& information_lette
       while(client.available()) {             
         
           char c = client.read();
-//          //Serial.print(c);
     
           // Extract Request Data 
           if (dataAhead == true){
@@ -96,9 +95,6 @@ void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route,
         // to the time we got from the server at boot
         unsigned long timeStamp = actualMillisFromBoot + millis();
 
-        Serial.print (actualMillisFromBoot);
-        Serial.print (millis());
-        Serial.print (timeStamp);
         logFile.write((byte*)&timeStamp, sizeof(long));
         logFile.write(',');
 
@@ -284,7 +280,7 @@ void loop() {
   // The program is alive...for now. 
   wdt_reset();
   
-  //Serial.println(".");
+  Serial.println(".");
   EthernetClient client = server.available();
 
 if(client) {
@@ -489,11 +485,11 @@ if(client) {
   */
   else if (strcmp("logs", route)==0){
      if(client.connected()) {
-        //Serial.println("\nResponse Sent to Client: Text");
+        Serial.println("\nResponse Sent to Client: Text");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
         // send web page
-        webFile = SD.open("actions.log");        // open log file
+        webFile = SD.open("actions.log");        // open log file (from SD card)
         if (webFile) {
             while(webFile.available() && client.available()) {
                 client.write(webFile.read());    // send log file to client
