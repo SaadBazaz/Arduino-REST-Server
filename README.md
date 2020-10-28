@@ -3,8 +3,9 @@ Simple, super-compact webserver code for Arduino boards
 
 ### Features
 - Simple routing
+- Time-logging from an actual timeserver
 - Optimized yet easily editable
-- Does not consume enough memory to cause instability
+- Does not consume enough memory to cause instability (Consuming just ~85% Program memory, ~68% SRAM)
 
 ### Notes
 For production, comment all Serial.print statements and it'll run faster than before.
