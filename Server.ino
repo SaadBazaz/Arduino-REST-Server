@@ -1,4 +1,4 @@
-#include <Ethernet.h> //Standard Library for Ethernet Server
+#include <Ethernet.h> //Standard Library for Ethernet Server (contains EthernetUDP)
 #include <SPI.h>      //Standard Library for networking
 #include <SD.h>       //Standard Library for SD card I/O
 #include <avr/wdt.h>  //Library for watchdog timer
@@ -9,12 +9,13 @@
 
 
 
+
 /*
-Function to handle generic responses
-1- Adds the appropriate header
-2- Adds the status code you've passed
-3- Adds the message (optional)
-*/
+ * Handle generic responses
+ * 1- Adds the appropriate header
+ * 2- Adds the status code you've passed
+ * 3- Adds the message (optional)
+ */
 void handleResponse(EthernetClient& client, char* status_code, char* message = ""){
     if(client.connected()) {
       client.print(F("HTTP/1.1 "));
@@ -23,14 +24,16 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
       client.println(message);
     }
     client.stop();
-    Serial.print("\nClient disconnected with ");
-    Serial.print(status_code);
+    //Serial.print("\nClient disconnected with ");
+    //Serial.print(status_code);
 }
 
 
+
+
 /*
-Function to extract data from the HTTP request
-*/
+ * Extract data from the HTTP request
+ */
 bool getData (EthernetClient& client, char* information, byte& information_letter_count){
       information_letter_count = 0;
 
@@ -43,7 +46,7 @@ bool getData (EthernetClient& client, char* information, byte& information_lette
       while(client.available()) {             
         
           char c = client.read();
-//          Serial.print(c);
+//          //Serial.print(c);
     
           // Extract Request Data 
           if (dataAhead == true){
@@ -76,15 +79,101 @@ bool getData (EthernetClient& client, char* information, byte& information_lette
 }
 
 
+
+// The milliseconds which we retrieved from the timeserver when the Arduino booted
+unsigned long actualMillisFromBoot;
+
+
+/*
+ * Log the provided information to a relevant file
+ */
+void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route, char* message = ""){
+  
+    auto logFile = SD.open("actions.log", FILE_WRITE);        // Open log file (from SD card)
+
+    if (logFile) {
+        // Calculate timestamp by adding the current timestamp from boot,
+        // to the time we got from the server at boot
+        unsigned long timeStamp = actualMillisFromBoot + millis();
+
+        Serial.print (actualMillisFromBoot);
+        Serial.print (millis());
+        Serial.print (timeStamp);
+        logFile.write((byte*)&timeStamp, sizeof(long));
+        logFile.write(',');
+
+        // Technique to extract IPAddress into char*
+        char IP[16]; // 3*"nnn." + 1*"nnn" + NUL
+        snprintf(IP, sizeof(IP), "%d.%d.%d.%d", IPaddr[0], IPaddr[1], IPaddr[2], IPaddr[3]);
+                
+        logFile.write(IP);
+        logFile.write(',');
+        logFile.write(username);
+        logFile.write(',');
+        logFile.write(requestMethod);
+        logFile.write(',');
+        logFile.write(route);
+        if (message){
+          logFile.write(',');
+          logFile.write(message);
+        }
+        logFile.write('\n');
+    }
+    logFile.close();
+      
+}
+
+
+
+
+
+/* 
+ * Send an NTP request to the time server at the given address 
+ */
+void sendNTPpacket(EthernetUDP& Udp, byte * packetBuffer, const int& NTP_PACKET_SIZE, const char * address) {
+
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+
+  Udp.beginPacket(address, 123); // NTP requests are to port 123
+  Udp.write(packetBuffer, NTP_PACKET_SIZE);
+  Udp.endPacket();
+}
+
+
+
+
+
+
 // Mac Address -> 00:aa:bb:cc:de:06
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x06};
 
 // Port -> 12345
 EthernetServer server = EthernetServer(12345);
 
+// WebFile declared pre-emptively to prevent on-time delay
 File webFile;
 
 
+
+
+/*
+ * Runs on every boot
+ */
 void setup() {
 
   //Enable Watchdog Timer.
@@ -92,16 +181,13 @@ void setup() {
   //In the loop, as we also delay the loop for 2 seconds, we have 7 seconds left to work
   //Which, in hindsight of the Arduino's walnut memory, may be less as well.
   wdt_enable(WDTO_8S);
-  
-  
-  Serial.begin(9600);
-  boolean receiving = false;
 
+  Serial.begin(9600);
     
   // initialize SD card
   Serial.println("Init SD card...");
   if (!SD.begin(4)) {
-      //Serial.println("ERROR - SD init");
+      Serial.println("ERROR - SD init");
       return;    // init failed
   }
   Serial.println("SUCCESS - SD init");
@@ -126,17 +212,64 @@ void setup() {
 //  }
   Serial.println("Set pin 1 as output");
 
+
+
+  /*
+   * Get actual Timestamp from a dedicated time server (NTP)
+   * ------------------------------------------------------- START
+   */
+
+  EthernetUDP Udp;
+  Udp.begin(8888);
+
+
+
+  /*
+   * Time Related variables
+   */
+  IPAddress timeServer(192, 43, 244, 18); // time.nist.gov NTP server
+  
+  const int NTP_PACKET_SIZE = 48;         // NTP time stamp is in the first 48 bytes of the message
+  
+  byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to hold incoming and outgoing packets
+
+
+  sendNTPpacket(Udp, packetBuffer, NTP_PACKET_SIZE, timeServer); // Send an NTP packet to a time server
+
+  // Wait to see if a reply is available
+  delay(1000); 
+  if ( Udp.parsePacket() ) { 
+    // We've received a packet, read the data from it
+    Udp.read(packetBuffer,NTP_PACKET_SIZE);  // Read the packet into the buffer
+
+    // The timestamp starts at byte 40 of the received packet and is four bytes,
+    // or two words, long. First, esxtract the two words:
+
+    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]); 
+    // Combine the four bytes (two words) into a long integer
+    // This is NTP time! (seconds since Jan 1 1900):
+    actualMillisFromBoot = (highWord << 16 | lowWord) * 60; 
+  }
+
+  Udp.stop();
+
+  /*
+   * Get actual Timestamp from a dedicated time server (NTP)
+   * ------------------------------------------------------- END
+   */
+
   
 }
 
 
 
-/* 
-Global data as that seemed like the most efficient option to pass around data,
-as these variables are used in every single request
-*/
-byte information_letter_count = 0;
 
+ 
+//Global data as that seemed like the most efficient option to pass around data,
+//as these variables are used in every single request
+
+byte information_letter_count = 0;
 byte wordCount = 0;
 byte letterCount = 0;
 byte lineCount = 0;
@@ -151,7 +284,7 @@ void loop() {
   // The program is alive...for now. 
   wdt_reset();
   
-  Serial.println(".");
+  //Serial.println(".");
   EthernetClient client = server.available();
 
 if(client) {
@@ -226,9 +359,17 @@ if(client) {
 
 
 
-  // ============================= Define routes here =============================
-  // Simply create a route (e.g. "/login", "/home") by creating an if/else statement containing
-  // the parent route. Subroutes can be checked by adding another if/else inside.
+  /* 
+   * ============================= Define routes here ============================= 
+   * Simply create a route (e.g. "/login", "/home") by creating an if/else statement containing
+   * the parent route. Subroutes can be checked by adding another if/else inside.
+   * 
+   * You can check the request method as well, with if conditionals.
+   * 
+   * Be creative! Almost anything a computer server can do, can be done in this Arduino server.
+   * Just be careful not to use Strings or any heavy computing. Simple stuff works amazing.
+   */
+   
 
 
     
@@ -239,7 +380,7 @@ if(client) {
   */
   if (strncmp("H/", route, 2) == 0){
 
-    Serial.println("\nActivating pin 7...");
+    Serial.println("\nActivating pin 1...");
     digitalWrite(1, HIGH);                   // sets the digital pin 1 on
 
     if(client.connected()){
@@ -248,6 +389,7 @@ if(client) {
   }
 
     
+
   /*
   @route: PULSE
   Pulses the pin 1 for 500ms
@@ -266,14 +408,15 @@ if(client) {
   }
 
     
+
   /*
-  @route: LOW
-  Turns the pin 1 low
-  Returns a statement (text/html)
+   *  @route: LOW 
+   *  Turns the pin 1 low
+   *  Returns a statement (text/html)
   */
   else if (strncmp("L/", route, 2) == 0){
 
-    Serial.println("\nDeactivating pin 13...");
+    Serial.println("\nDeactivating pin 1...");
     digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
     if(client.connected()){
@@ -282,10 +425,11 @@ if(client) {
   }
 
    
+  
   /* 
-  @route: LOGIN
-  GET: Serves a login page from the SD card
-  POST: Receives and validates login data
+   * @route: LOGIN
+   * GET: Serves a login page from the SD card
+   * POST: Receives and validates login data
   */
   else if (strncmp("login", route, 5) == 0){
 
@@ -294,8 +438,7 @@ if(client) {
 
       if ( getData(client, information, information_letter_count) ){
 
-        Serial.print("\nInfo is: ");
-        Serial.print(information);
+        logger(client.remoteIP(), "zohair", requestMethod, route, information);
 
         // For now, return the information which the client entered
         handleResponse(client, "200 OK", information);       
@@ -310,11 +453,11 @@ if(client) {
         Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
-        // send web page
-        webFile = SD.open("index.htm");        // open web page file
+        // Send web page
+        webFile = SD.open("index.htm");        // Open web page file (from SD card)
         if (webFile) {
             while(webFile.available() && client.available()) {
-                client.write(webFile.read()); // send web page to client
+                client.write(webFile.read()); // Send web page to client
             }
             webFile.close();
         } 
@@ -322,28 +465,60 @@ if(client) {
         Serial.println("Client is disconnected");
     }    
   }    
+
+
+
     
   /*
-  @route: DELAY
-  Delay the Arduino for 8 seconds. Used to reboot the Arduino forcefully.
-  Returns OK
+   * @route: DELAY
+   * Delay the Arduino for 8 seconds. Used to reboot the Arduino forcefully.
+   * Returns OK
   */
   else if (strcmp("dl", route)==0){
       delay(8000);
       handleResponse(client, "200 OK");  
   }
+
+
+
+
+ /*
+   * @route: LOGS
+   * Retrieve the log file
+   * Returns OK
+  */
+  else if (strcmp("logs", route)==0){
+     if(client.connected()) {
+        //Serial.println("\nResponse Sent to Client: Text");
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: text/html\n");
+        // send web page
+        webFile = SD.open("actions.log");        // open log file
+        if (webFile) {
+            while(webFile.available() && client.available()) {
+                client.write(webFile.read());    // send log file to client
+            }
+            webFile.close();
+        } 
+        client.stop();
+        Serial.println("Client is disconnected");
+      }  
+  }
     
+
+
     
   /*
-  @route: NOT_FOUND
-  If route doesn't exist above, land here
-  Returns a statement (text/html)
+   * @route: NOT_FOUND
+   * If route doesn't exist above, land here
+   * Returns a statement (text/html)
   */
   else {
     handleResponse(client, "404 Not Found");
   }
 
-  // free memory
+
+  // free dynamically allocated memory
   delete route;
   delete requestMethod;
 
