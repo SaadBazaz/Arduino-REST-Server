@@ -24,8 +24,8 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
       client.println(message);
     }
     client.stop();
-    Serial.print("\nClient disconnected with ");
-    Serial.print(status_code);
+    //Serial.print("\nClient disconnected with ");
+    //Serial.print(status_code);
 }
 
 
@@ -144,7 +144,7 @@ byte parseData(char* data, struct Lite_String* &buffer, byte& length){
 
 //  for (byte i=0; i<index+1; i++){
 //    for (byte j=0; j<buffer[i].length; j++)
-//       Serial.print(buffer[i].start[j]);
+//       //Serial.print(buffer[i].start[j]);
 //  }
 
 
@@ -253,35 +253,35 @@ void setup() {
   //Which, in hindsight of the Arduino's walnut memory, may be less as well.
   wdt_enable(WDTO_8S);
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
     
   // initialize SD card
-  Serial.println("Init SD card...");
+  //Serial.println("Init SD card...");
   if (!SD.begin(4)) {
-      Serial.println("ERROR - SD init");
+      //Serial.println("ERROR - SD init");
       return;    // init failed
   }
-  Serial.println("SUCCESS - SD init");
+  //Serial.println("SUCCESS - SD init");
 
   
   if(Ethernet.begin(mac) == 0) { 
-    Serial.println("Failed to Configure");
+    //Serial.println("Failed to Configure");
     return;
   }
   else {
-    Serial.print("IP address of Arduino:");
-    Serial.println(Ethernet.localIP());
+    //Serial.print("IP address of Arduino:");
+    //Serial.println(Ethernet.localIP());
   }
   
   server.begin();
-  Serial.println("Server Started");
+  //Serial.println("Server Started");
 
   // Making all from 1-13 trigger pins
 //  for (int i=1; i<9; i++){
     pinMode(1, OUTPUT);    // sets the digital pin as output
     digitalWrite(1, LOW);  // sets the digital pin off
 //  }
-  Serial.println("Set pin 1 as output");
+  //Serial.println("Set pin 1 as output");
 
 
 
@@ -355,7 +355,7 @@ void loop() {
   // The program is alive...for now. 
   wdt_reset();
   
-  Serial.println(".");
+  //Serial.println(".");
   EthernetClient client = server.available();
 
 if(client) {
@@ -374,7 +374,7 @@ if(client) {
   while(client.available()) {             
     
       char c = client.read();
-      Serial.print(c);
+      //Serial.print(c);
 
       // Data in the first line is important to determine which route we'll take, and how
       if (c == ' '){
@@ -419,13 +419,13 @@ if(client) {
   }
 
 
-  Serial.print ("Req Mthd: ");
-  Serial.print (requestMethod);
-  Serial.print ("\nRoute: ");
+  //Serial.print ("Req Mthd: ");
+  //Serial.print (requestMethod);
+  //Serial.print ("\nRoute: ");
 
   route = &route[1];
   
-  Serial.print (route);
+  //Serial.print (route);
 
 
 
@@ -451,7 +451,7 @@ if(client) {
   */
   if (strncmp("H/", route, 2) == 0){
 
-    Serial.println("\nActivating pin 1...");
+    //Serial.println("\nActivating pin 1...");
     digitalWrite(1, HIGH);                   // sets the digital pin 1 on
 
     if(client.connected()){
@@ -468,7 +468,7 @@ if(client) {
   */
   else if (strncmp("P/", route, 2) == 0){
     
-    Serial.println("\nPulsing pin 1...");
+    //Serial.println("\nPulsing pin 1...");
     digitalWrite(1, HIGH);                   // sets the digital pin 1 on
     delay(1000);                               // waits for a second
     digitalWrite(1, LOW);                    // sets the digital pin 1 off
@@ -487,7 +487,7 @@ if(client) {
   */
   else if (strncmp("L/", route, 2) == 0){
 
-    Serial.println("\nDeactivating pin 1...");
+    //Serial.println("\nDeactivating pin 1...");
     digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
     if(client.connected()){
@@ -521,7 +521,9 @@ if(client) {
           logger(client.remoteIP(), username, requestMethod, route);
 
           // For now, return the username which the client entered
-          handleResponse(client, "200 OK", username);       
+          handleResponse(client, "200 OK", username);
+
+          delete buffer;
 
         }
         else {
@@ -538,7 +540,7 @@ if(client) {
     }
     
     else if(client.connected()) {             // Handle any other Request Method (GET, DELETE, HEAD, etc)
-        Serial.println("\nResponse Sent to Client: A HTML Page");
+        //Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
         // Send web page
@@ -550,7 +552,7 @@ if(client) {
             webFile.close();
         } 
         client.stop();
-        Serial.println("Client is disconnected");
+        //Serial.println("Client is disconnected");
     }    
   }    
 
@@ -577,7 +579,7 @@ if(client) {
   */
   else if (strcmp("logs", route)==0){
      if(client.connected()) {
-        Serial.println("\nResponse Sent to Client: Text");
+        //Serial.println("\nResponse Sent to Client: Text");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
         // send web page
@@ -589,7 +591,7 @@ if(client) {
             webFile.close();
         } 
         client.stop();
-        Serial.println("Client is disconnected");
+        //Serial.println("Client is disconnected");
       }  
   }
     
