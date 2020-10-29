@@ -78,6 +78,81 @@ bool getData (EthernetClient& client, char* information, byte& information_lette
 }
 
 
+/*
+ * Instead of making entirely new strings, which we would do when splitting strings,
+ * We simply save the "starting position" of the split string and its length. That way,
+ * we save space and time.
+ * 
+ * We can extract the whole string by just doing:
+ *
+ * ```
+ * //assuming "buffer" is a Lite_String 
+ * 
+ * char * my_extracted_string;
+ * my_extracted_string = new char [buffer.length];
+ * for (byte i=0; i<buffer.length; i++){
+ *  my_extracted_string[i] = buffer.start[i];
+ * }
+ * 
+ * 
+ * ```
+ * 
+ */
+struct Lite_String {
+  char * start;
+  byte length;  
+};
+
+
+/*
+ * Take a char array of data, and tokenize it into Lite_Strings
+ * "Buffer" behaves like a simple vector class, expanding itself according to its needs
+ * Returns the total number of Lite_Strings in "buffer"
+ */
+byte parseData(char* data, struct Lite_String* &buffer, byte& length){
+
+  byte index = 0;
+
+  length = 4;
+  buffer = new Lite_String [length];
+
+
+  buffer[index].start = &data[0];
+  buffer[index].length = 1;  
+  for (byte i=0; data[i]!='\0'; i++){
+      
+      if (data[i] == '=' or data[i] == '&'){
+        buffer[++index].start = &data[++i];
+        buffer[index].length = 1;
+        if (index>=length){
+          length*=2;
+          Lite_String* temp_buffer = new Lite_String [length];
+          for (byte i=0; i<index; i++){
+            temp_buffer[i] = buffer[i]; 
+          }
+          delete buffer;
+          buffer = temp_buffer;
+        }
+
+                
+      }
+      else{
+         buffer[index].length++;
+      }
+  }
+
+
+//  for (byte i=0; i<index+1; i++){
+//    for (byte j=0; j<buffer[i].length; j++)
+//       Serial.print(buffer[i].start[j]);
+//  }
+
+
+  return index+1;
+}
+
+
+
 
 // The milliseconds which we retrieved from the timeserver when the Arduino booted
 unsigned long actualMillisFromBoot;
@@ -429,15 +504,32 @@ if(client) {
   */
   else if (strncmp("login", route, 5) == 0){
 
-    if(strcmp(requestMethod, "POST") == 0){
-   
+    if(strcmp(requestMethod, "POST") == 0){   // Handle POST Request
 
       if ( getData(client, information, information_letter_count) ){
 
-        logger(client.remoteIP(), "zohair", requestMethod, route, information);
+        byte length;
+        Lite_String * buffer;
+        byte index = parseData (information, buffer, length);
 
-        // For now, return the information which the client entered
-        handleResponse(client, "200 OK", information);       
+        if (buffer[0].start[0] == 'u'){
+          
+          char * username = new char [buffer[1].length+1];        //+1 for NULL ending character
+          strncpy(username, buffer[1].start, buffer[1].length);
+          username[buffer[1].length] = '\0';
+          
+          logger(client.remoteIP(), username, requestMethod, route);
+
+          // For now, return the username which the client entered
+          handleResponse(client, "200 OK", username);       
+
+        }
+        else {
+          // Was some other format
+          handleResponse(client, "422 Unprocessable Entity");                 
+        }
+
+
       }
       else{
         return;
@@ -445,7 +537,7 @@ if(client) {
        
     }
     
-    else if(client.connected()) {
+    else if(client.connected()) {             // Handle any other Request Method (GET, DELETE, HEAD, etc)
         Serial.println("\nResponse Sent to Client: A HTML Page");
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/html\n");
