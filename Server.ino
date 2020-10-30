@@ -19,14 +19,14 @@
 void handleResponse(EthernetClient& client, char* status_code, char* message = ""){
     if(client.connected()) {
       client.print(F("HTTP/1.1 "));
-      client.print(status_code);
+      client.println(status_code);
       
       // Enable CORS (so you can use this Arduino from another application)  
-      client.println("\nAccess-Control-Allow-Origin: *");   
+      client.println("Access-Control-Allow-Origin: *");   
       client.println("Access-Control-Allow-Methods: GET");
 
       if (message != ""){
-        client.println(F("\nContent-Type: text/html\n"));
+        client.println(F("Content-Type: text/html\n"));
         client.println(message);
       }
     }
