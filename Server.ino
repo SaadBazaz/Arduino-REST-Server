@@ -20,8 +20,10 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
     if(client.connected()) {
       client.print(F("HTTP/1.1 "));
       client.print(status_code);
-      client.println(F("\nContent-Type: text/html\n"));
-      client.println(message);
+      if (message != ""){
+        client.println(F("\nContent-Type: text/html\n"));
+        client.println(message);
+      }
     }
     client.stop();
     //Serial.print("\nClient disconnected with ");
@@ -184,7 +186,7 @@ void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route,
         logFile.write(requestMethod);
         logFile.write(',');
         logFile.write(route);
-        if (message){
+        if (message != ""){
           logFile.write(',');
           logFile.write(message);
         }
