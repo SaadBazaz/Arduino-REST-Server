@@ -529,6 +529,7 @@ if(client) {
           // For now, return the username which the client entered
           handleResponse(client, "200 OK", username);
 
+          delete username;
           delete buffer;
 
         }
