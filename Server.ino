@@ -190,8 +190,10 @@ void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route,
         }
         logFile.write('\n');
     }
+    else {
+         handleResponse(client, "500 Internal Server Error");
+    }
     logFile.close();
-      
 }
 
 
@@ -540,20 +542,24 @@ if(client) {
     }
     
     else if(client.connected()) {             // Handle any other Request Method (GET, DELETE, HEAD, etc)
-        //Serial.println("\nResponse Sent to Client: A HTML Page");
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-Type: text/html\n");
         // Send web page
-        webFile = SD.open("index.htm");        // Open web page file (from SD card)
+        webFile = SD.open("index.htm");.      // Open web page file (from SD card)
         if (webFile) {
+            //Serial.println("\nResponse Sent to Client: A HTML Page");
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/html\n");            
             while(webFile.available() && client.available()) {
                 client.write(webFile.read()); // Send web page to client
             }
-            webFile.close();
-        } 
-        client.stop();
-        //Serial.println("Client is disconnected");
+            client.stop();
+            //Serial.println("Client is disconnected");
+        }
+        else {
+            handleResponse(client, "500 Internal Server Error");
+        }
+        webFile.close();
     }    
+
   }    
 
 
