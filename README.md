@@ -5,6 +5,7 @@ Simple, super-compact webserver code for Arduino boards
 - Simple routing
 - Time-logging from an actual timeserver
 - Extracts and parses request body
+- CORS Enabled
 - Optimized yet easily editable
 - Does not consume enough memory to cause instability (Consuming just ~85% Program memory, ~68% SRAM)
 
