@@ -288,6 +288,8 @@ void setup() {
   //Serial.println("Set pin 1 as output");
 
 
+  // The program is alive...for now. 
+  wdt_reset();
 
   /*
    * Get actual Timestamp from a dedicated time server (NTP)
