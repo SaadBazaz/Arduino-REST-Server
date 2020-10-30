@@ -163,7 +163,7 @@ unsigned long actualMillisFromBoot;
 /*
  * Log the provided information to a relevant file
  */
-void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route, char* message = ""){
+void logger (EthernetClient& client, char* username, char* requestMethod, char* route, char* message = ""){
   
     auto logFile = SD.open("actions.log", FILE_WRITE);        // Open log file (from SD card)
 
@@ -175,6 +175,7 @@ void logger (IPAddress IPaddr, char* username, char* requestMethod, char* route,
         logFile.write((byte*)&timeStamp, sizeof(long));
         logFile.write(',');
 
+        IPAddress IPaddr = client.remoteIP();
         // Technique to extract IPAddress into char*
         char IP[16]; // 3*"nnn." + 1*"nnn" + NUL
         snprintf(IP, sizeof(IP), "%d.%d.%d.%d", IPaddr[0], IPaddr[1], IPaddr[2], IPaddr[3]);
@@ -272,10 +273,9 @@ void setup() {
     //Serial.println("Failed to Configure");
     return;
   }
-  else {
-    //Serial.print("IP address of Arduino:");
-    //Serial.println(Ethernet.localIP());
-  }
+  //Serial.print("IP address of Arduino:");
+  //Serial.println(Ethernet.localIP());
+  
   
   server.begin();
   //Serial.println("Server Started");
@@ -524,7 +524,7 @@ if(client) {
           strncpy(username, buffer[1].start, buffer[1].length);
           username[buffer[1].length] = '\0';
           
-          logger(client.remoteIP(), username, requestMethod, route);
+          logger(client, username, requestMethod, route);
 
           // For now, return the username which the client entered
           handleResponse(client, "200 OK", username);
@@ -548,7 +548,7 @@ if(client) {
     
     else if(client.connected()) {             // Handle any other Request Method (GET, DELETE, HEAD, etc)
         // Send web page
-        webFile = SD.open("index.htm");.      // Open web page file (from SD card)
+        webFile = SD.open("index.htm");      // Open web page file (from SD card)
         if (webFile) {
             //Serial.println("\nResponse Sent to Client: A HTML Page");
             client.println("HTTP/1.1 200 OK");
