@@ -41,7 +41,7 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
 /*
  * Extract data from the HTTP request
  */
-bool getData (EthernetClient& client, char* information, byte& information_letter_count){
+bool getBody (EthernetClient& client, char* information, byte& information_letter_count){
       information_letter_count = 0;
 
       byte wordCount = 0;
@@ -116,7 +116,7 @@ struct Lite_String {
  * "Buffer" behaves like a simple vector class, expanding itself according to its needs
  * Returns the total number of Lite_Strings in "buffer"
  */
-byte parseData(char* data, struct Lite_String* &buffer, byte& length){
+byte parseBody(char* data, struct Lite_String* &buffer, byte& length){
 
   byte index = 0;
 
@@ -517,11 +517,11 @@ if(client) {
 
     if(strcmp(requestMethod, "POST") == 0){   // Handle POST Request
 
-      if ( getData(client, information, information_letter_count) ){
+      if ( getBody(client, information, information_letter_count) ){
 
         byte length;
         Lite_String * buffer;
-        byte index = parseData (information, buffer, length);
+        byte index = parseBody (information, buffer, length);
 
         if (buffer[0].start[0] == 'u'){
           
