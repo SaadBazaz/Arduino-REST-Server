@@ -595,19 +595,22 @@ if(client) {
   */
   else if (strcmp("logs", route)==0){
      if(client.connected()) {
-        //Serial.println("\nResponse Sent to Client: Text");
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-Type: text/html\n");
         // send web page
         webFile = SD.open("actions.log");        // open log file (from SD card)
         if (webFile) {
+            //Serial.println("\nResponse Sent to Client: Text");
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/html\n");
             while(webFile.available() && client.available()) {
                 client.write(webFile.read());    // send log file to client
             }
             webFile.close();
-        } 
-        client.stop();
-        //Serial.println("Client is disconnected");
+            client.stop();
+            //Serial.println("Client is disconnected");
+        }
+        else{
+            handleResponse(client, "500 Internal Server Error");
+        }
       }  
   }
     
