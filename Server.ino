@@ -604,13 +604,13 @@ if(client) {
             while(webFile.available() && client.available()) {
                 client.write(webFile.read());    // send log file to client
             }
-            webFile.close();
             client.stop();
             //Serial.println("Client is disconnected");
         }
         else{
             handleResponse(client, "500 Internal Server Error");
         }
+        webFile.close();
       }  
   }
     
