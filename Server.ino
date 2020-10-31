@@ -546,7 +546,7 @@ if(client) {
 
       }
       else{
-        return;
+        handleResponse(client, "400 Bad Request");
       }
        
     }
