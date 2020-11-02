@@ -465,9 +465,8 @@ if(client) {
     //Serial.println("\nActivating pin 1...");
     digitalWrite(1, HIGH);                   // sets the digital pin 1 on
 
-    if(client.connected()){
-      handleResponse(client, "200 OK");      
-    }
+    handleResponse(client, "200 OK");      
+    
   }
 
     
@@ -484,9 +483,8 @@ if(client) {
     delay(1000);                               // waits for a second
     digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
-    if(client.connected()){
-      handleResponse(client, "200 OK");      
-    }
+    handleResponse(client, "200 OK");      
+
   }
 
     
@@ -501,9 +499,8 @@ if(client) {
     //Serial.println("\nDeactivating pin 1...");
     digitalWrite(1, LOW);                    // sets the digital pin 1 off
 
-    if(client.connected()){
-      handleResponse(client, "200 OK");      
-    }
+    handleResponse(client, "200 OK");      
+   
   }
 
    
@@ -535,13 +532,14 @@ if(client) {
           handleResponse(client, "200 OK", username);
 
           delete username;
-          delete buffer;
 
         }
         else {
           // Was some other format
           handleResponse(client, "422 Unprocessable Entity");                 
         }
+         
+        delete buffer;
 
 
       }
@@ -581,7 +579,9 @@ if(client) {
    * Returns OK
   */
   else if (strcmp("dl", route)==0){
+
       delay(8000);
+      
       handleResponse(client, "200 OK");  
   }
 
