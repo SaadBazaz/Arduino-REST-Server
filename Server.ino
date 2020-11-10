@@ -22,8 +22,8 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
       client.println(status_code);
       
       // Enable CORS (so you can use this Arduino from another application)  
-      client.println("Access-Control-Allow-Origin: *");   
-      client.println("Access-Control-Allow-Methods: GET");
+      client.println(F("Access-Control-Allow-Origin: *"));   
+      client.println(F("Access-Control-Allow-Methods: GET"));
 
       if (message != ""){
         client.println(F("Content-Type: text/html\n"));
