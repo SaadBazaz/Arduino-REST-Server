@@ -1,11 +1,21 @@
 #include <Ethernet.h> //Standard Library for Ethernet Server (contains EthernetUDP)
 #include <SPI.h>      //Standard Library for networking
 #include <SD.h>       //Standard Library for SD card I/O
-#include <avr/wdt.h>  //Library for watchdog timer
 
-#define MAXLENGTH_FIRSTLINE 30          //Max line length for the first line of the request
-#define MAXLENGTH 150                   //Max line length for other lines of the request
-#define MAXLINES 18                     //Max possible lines for the whole request (only used if you try to retrieve data)
+#include "CurrentTime.h>
+#include "Configuration.cpp"
+
+
+
+/*
+ * ToDo:
+ * - Replace all raw strings with strings in flash memory, or maintain an array of all used status codes
+ * - "snprintf_P(s, sizeof(s), PSTR("%s is %i years old"), name, age);" in logger, instead of consecutive calls
+ * - Move helper functions to separate files
+ * - Add micro sql lite for logging and auth storage
+ * - Add verbose mode
+ * - use config flags
+ */
 
 
 
@@ -22,8 +32,10 @@ void handleResponse(EthernetClient& client, char* status_code, char* message = "
       client.println(status_code);
       
       // Enable CORS (so you can use this Arduino from another application)  
+      #ifdef CORS
       client.println(F("Access-Control-Allow-Origin: *"));   
       client.println(F("Access-Control-Allow-Methods: GET"));
+      #endif
 
       if (message != ""){
         client.println(F("Content-Type: text/html\n"));
@@ -160,11 +172,6 @@ byte parseBody(char* data, struct Lite_String* &buffer, byte& length){
 
 
 
-
-// The milliseconds which we retrieved from the timeserver when the Arduino booted
-unsigned long actualMillisFromBoot;
-
-
 /*
  * Log the provided information to a relevant file
  */
@@ -175,7 +182,7 @@ void logger (EthernetClient& client, char* username, char* requestMethod, char* 
     if (logFile) {
         // Calculate timestamp by adding the current timestamp from boot,
         // to the time we got from the server at boot
-        unsigned long timeStamp = actualMillisFromBoot + millis();
+        unsigned long timeStamp = time.getTimeMillis();
 
         logFile.write((byte*)&timeStamp, sizeof(long));
         logFile.write(',');
@@ -206,40 +213,6 @@ void logger (EthernetClient& client, char* username, char* requestMethod, char* 
 
 
 
-
-
-/* 
- * Send an NTP request to the time server at the given address 
- */
-void sendNTPpacket(EthernetUDP& Udp, byte * packetBuffer, const int& NTP_PACKET_SIZE, const char * address) {
-
-  // set all bytes in the buffer to 0
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);
-  // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
-  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-  packetBuffer[1] = 0;     // Stratum, or type of clock
-  packetBuffer[2] = 6;     // Polling Interval
-  packetBuffer[3] = 0xEC;  // Peer Clock Precision
-  // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12]  = 49;
-  packetBuffer[13]  = 0x4E;
-  packetBuffer[14]  = 49;
-  packetBuffer[15]  = 52;
-
-  // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:
-
-  Udp.beginPacket(address, 123); // NTP requests are to port 123
-  Udp.write(packetBuffer, NTP_PACKET_SIZE);
-  Udp.endPacket();
-}
-
-
-
-
-
-
 // Mac Address -> 00:aa:bb:cc:de:06
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x06};
 
@@ -249,8 +222,8 @@ EthernetServer server = EthernetServer(12345);
 // WebFile declared pre-emptively to prevent on-time delay
 File webFile;
 
-
-
+// Library which allows you to get the current time
+CurrentTime time;
 
 /*
  * Runs on every boot
@@ -295,51 +268,6 @@ void setup() {
 
   // The program is alive...for now. 
   wdt_reset();
-
-  /*
-   * Get actual Timestamp from a dedicated time server (NTP)
-   * ------------------------------------------------------- START
-   */
-
-  EthernetUDP Udp;
-  Udp.begin(8888);
-
-
-
-  /*
-   * Time Related variables
-   */
-  IPAddress timeServer(192, 43, 244, 18); // time.nist.gov NTP server
-  
-  const int NTP_PACKET_SIZE = 48;         // NTP time stamp is in the first 48 bytes of the message
-  
-  byte packetBuffer[NTP_PACKET_SIZE];     // Buffer to hold incoming and outgoing packets
-
-
-  sendNTPpacket(Udp, packetBuffer, NTP_PACKET_SIZE, timeServer); // Send an NTP packet to a time server
-
-  // Wait to see if a reply is available
-  delay(1000); 
-  if ( Udp.parsePacket() ) { 
-    // We've received a packet, read the data from it
-    Udp.read(packetBuffer,NTP_PACKET_SIZE);  // Read the packet into the buffer
-
-    // The timestamp starts at byte 40 of the received packet and is four bytes,
-    // or two words, long. First, esxtract the two words:
-
-    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]); 
-    // Combine the four bytes (two words) into a long integer
-    // This is NTP time! (seconds since Jan 1 1900):
-    actualMillisFromBoot = (highWord << 16 | lowWord) * 60; 
-  }
-
-  Udp.stop();
-
-  /*
-   * Get actual Timestamp from a dedicated time server (NTP)
-   * ------------------------------------------------------- END
-   */
 
   
 }
