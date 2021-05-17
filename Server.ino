@@ -2,7 +2,7 @@
 #include <SPI.h>      //Standard Library for networking
 #include <SD.h>       //Standard Library for SD card I/O
 
-#include "CurrentTime.h>
+#include "CurrentTime.h"
 #include "Configuration.cpp"
 
 
@@ -15,6 +15,8 @@
  * - Add micro sql lite for logging and auth storage
  * - Add verbose mode
  * - use config flags
+ * - Add mechanism to detect board type
+ * - Optimizations like faster pin triggering
  */
 
 
@@ -172,6 +174,11 @@ byte parseBody(char* data, struct Lite_String* &buffer, byte& length){
 
 
 
+
+// Library which allows you to get the current time
+CurrentTime time;
+
+
 /*
  * Log the provided information to a relevant file
  */
@@ -222,8 +229,6 @@ EthernetServer server = EthernetServer(12345);
 // WebFile declared pre-emptively to prevent on-time delay
 File webFile;
 
-// Library which allows you to get the current time
-CurrentTime time;
 
 /*
  * Runs on every boot
